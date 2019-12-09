@@ -29,13 +29,17 @@ public class Transform implements RequestHandler<Request, HashMap<String, Object
     private static SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy");
 
     public HashMap<String, Object> handleRequest(Request request, Context context) {
-
+        LambdaLogger logger = context.getLogger();
+        double start = System.currentTimeMillis();
         String cvsSplitBy = ",";
         //Collect inital data.
         Inspector inspector = new Inspector();
         inspector.inspectAll();
         String bucketname = request.getBucketname();
         String filename = request.getFilename();
+        String outputFileame = filename.replace(".csv", "") + "_output.csv";
+
+        logger.log("Processing file:" + filename + " inside " + bucketname);
 
         AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
         S3Object s3Object = s3Client.getObject(new GetObjectRequest(
@@ -46,20 +50,25 @@ public class Transform implements RequestHandler<Request, HashMap<String, Object
 
         //scanning data line by line
         StringWriter sw = new StringWriter();
-        List<String[]> outputList = new ArrayList<>();
         Collection<String> orderIdCollection = new HashSet<>();
         scanner.hasNext();
         String line = scanner.nextLine();
         String[] headers = line.split(cvsSplitBy);
-        String[] updatedDHeaders = getUpdatedHeaders(headers);
-        outputList.add(updatedDHeaders);
+        logger.log("updating headers...");
+        String[] updatedHeaders = getUpdatedHeaders(headers);
+//        logger.log("Updated headers have " + updatedHeaders.length + " columns");
+        sw.append(convertToStr(updatedHeaders, cvsSplitBy));
+        int count = 0;
         while (scanner.hasNext()) {
+            line = scanner.nextLine();
             String[] input = line.split(cvsSplitBy);
             if (!orderIdCollection.contains(input[6])) {
+                count++;
                 String[] output = performTransformation(input);
-                outputList.add(output);
-                sw.append(convertToStr(output));
+                sw.append(convertToStr(output, cvsSplitBy));
                 orderIdCollection.add(input[6]);
+            } else {
+//                logger.log("Order Id " + input[6] + " is already present.");
             }
         }
         scanner.close();
@@ -70,11 +79,9 @@ public class Transform implements RequestHandler<Request, HashMap<String, Object
         meta.setContentType("text/plain");
 
         // Create new file on S3
-        s3Client.putObject(bucketname, filename, is, meta);
-
-        LambdaLogger logger = context.getLogger();
-        logger.log("Transform  bucketname:" + bucketname + " filename:" + filename);
-
+        logger.log("Creating file " + outputFileame + " with " + count + " lines...");
+        s3Client.putObject(bucketname, outputFileame, is, meta);
+        logger.log("File " + outputFileame + " Successfully created.");
 
         //Create and populate a separate response object for function output. (OPTIONAL)
         Response response = new Response();
@@ -82,16 +89,18 @@ public class Transform implements RequestHandler<Request, HashMap<String, Object
         inspector.consumeResponse(response);
 
         //****************END FUNCTION IMPLEMENTATION***************************
+        double end = System.currentTimeMillis();
+        logger.log("TIme taken at server side to process " + count + " rows is " + (end-start) + "ms");
 
         //Collect final information such as total runtime and cpu deltas.
         inspector.inspectAllDeltas();
         return inspector.finish();
     }
 
-    private String convertToStr(String[] output) {
+    private static String convertToStr(String[] output, String cvsSplitBy) {
         StringBuilder toReturn = new StringBuilder();
         for (String anOutput : output) {
-            toReturn.append(anOutput);
+            toReturn.append(anOutput).append(cvsSplitBy);
         }
         toReturn.append("\n");
         return toReturn.toString();
@@ -135,4 +144,8 @@ public class Transform implements RequestHandler<Request, HashMap<String, Object
         return toReturn;
     }
 
+//    public static void main(String[] args) {
+//        String[] output = {"sad", "bad", "mad"};
+//        convertToStr(output, ",");
+//    }
 }
