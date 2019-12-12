@@ -1,9 +1,9 @@
 package lambda;
 
 /**
- *
- * @author Wes Lloyd
+ * Created by Ayush Bandil on 12/12/2019.
  */
+
 public class Request {
 
     String name;

@@ -58,16 +58,44 @@ public class Load implements RequestHandler<Request, HashMap<String, Object>> {
             logger.log("Previous entries have been deleted successfully.");
             ps.execute();
 
+            ps = con.prepareStatement("drop table sales;");
+            ps.execute();
+
+            ps = con.prepareStatement(
+            "CREATE TABLE sales (\n" +
+                    "Region VARCHAR(40), \n" +
+                    "Country VARCHAR(40), \n" +
+                    "Item_Type VARCHAR(40), \n" +
+                    "Sales_Channel VARCHAR(40), \n" +
+                    "Order_Priority VARCHAR(40), \n" +
+                    "Order_Date DATE, \n" +
+                    "Order_ID VARCHAR(40),\n" +
+                    "Ship_Date DATE, \n" +
+                    "Units_Sold NUMERIC, \n" +
+                    "Unit_Price FLOAT(14,4), \n" +
+                    "Unit_Cost FLOAT(14,4), \n" +
+                    "Total_Revenue FLOAT(14,4), \n" +
+                    "Total_Cost FLOAT(14,4), \n" +
+                    "Total_Profit FLOAT(14,4), \n" +
+                    "Order_Date_Unix_Timestamp VARCHAR(40), \n" +
+                    "Ship_Date_Unix_Timestamp VARCHAR(40), \n" +
+                    "Order_Processing_Time_Days NUMERIC, \n" +
+                    "Gross_Margin FLOAT(10,4), \n" +
+                    "Profit_Unit FLOAT(10,4));");
+            ps.execute();
+
             scanner.hasNext();
             scanner.nextLine();
             String line = "";
+            Statement statement = null;
             while (scanner.hasNext()) {
                 line = scanner.nextLine();
                 String[] input = line.split(cvsSplitBy);
-                ps = con.prepareStatement(getStatement(input));
-                ps.execute();
+                statement.addBatch(getStatement(input));
+                if(count%1000 ==0) statement.executeBatch();
                 count++;
             }
+            statement.executeBatch();
             scanner.close();
             con.close();
         } catch (SQLException e) {
