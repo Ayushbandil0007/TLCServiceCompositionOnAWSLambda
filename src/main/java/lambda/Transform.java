@@ -17,12 +17,11 @@ import com.amazonaws.services.s3.model.S3Object;
 import saaf.Inspector;
 import saaf.Response;
 
+
 /**
- * uwt.lambda_test::handleRequest
- *
- * @author Wes Lloyd
- * @author Robert Cordingly
+ * Created by Ayush Bandil on 12/12/2019.
  */
+
 public class Transform implements RequestHandler<Request, HashMap<String, Object>> {
     private static int initialLength = 0;
     private static int columnsToAdd = 5;
@@ -86,18 +85,16 @@ public class Transform implements RequestHandler<Request, HashMap<String, Object
         //Create and populate a separate response object for function output. (OPTIONAL)
         Response response = new Response();
         response.setValue("Bucket: " + bucketname + " filename:" + filename + " with " + orderIdCollection.size() + " rows processed.");
-        inspector.consumeResponse(response);
 
         //****************END FUNCTION IMPLEMENTATION***************************
         double end = System.currentTimeMillis();
-        logger.log("TIme taken at server side to process " + count + " rows is " + (end-start) + "ms");
-
-        //Collect final information such as total runtime and cpu deltas.
+        logger.log("TIme taken at server side to process " + count + " rows is " + (end - start) + "ms");
+        inspector.consumeResponse(response);
         inspector.inspectAllDeltas();
         return inspector.finish();
     }
 
-    private static String convertToStr(String[] output, String cvsSplitBy) {
+    static String convertToStr(String[] output, String cvsSplitBy) {
         StringBuilder toReturn = new StringBuilder();
         for (String anOutput : output) {
             toReturn.append(anOutput).append(cvsSplitBy);
@@ -106,7 +103,7 @@ public class Transform implements RequestHandler<Request, HashMap<String, Object
         return toReturn.toString();
     }
 
-    private static String[] getUpdatedHeaders(String[] headers) {
+    public static String[] getUpdatedHeaders(String[] headers) {
         initialLength = headers.length;
         String[] toReturn = new String[initialLength + columnsToAdd];
         int i = 0;
@@ -121,7 +118,7 @@ public class Transform implements RequestHandler<Request, HashMap<String, Object
         return toReturn;
     }
 
-    private static String[] performTransformation(String[] input) {
+    public static String[] performTransformation(String[] input) {
         String[] toReturn = new String[initialLength + columnsToAdd];
         int i = 0;
         for (i = 0; i < initialLength; i++) {
@@ -143,9 +140,4 @@ public class Transform implements RequestHandler<Request, HashMap<String, Object
         }
         return toReturn;
     }
-
-//    public static void main(String[] args) {
-//        String[] output = {"sad", "bad", "mad"};
-//        convertToStr(output, ",");
-//    }
 }

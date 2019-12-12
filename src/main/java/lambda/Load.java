@@ -2,12 +2,9 @@ package lambda;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.sql.Connection;
 import java.util.*;
 
 import com.amazonaws.services.lambda.runtime.*;
@@ -19,17 +16,15 @@ import com.amazonaws.services.s3.model.S3Object;
 import saaf.Inspector;
 import saaf.Response;
 
+
 /**
- * uwt.lambda_test::handleRequest
- *
- * @author Wes Lloyd
- * @author Robert Cordingly
+ * Created by Ayush Bandil on 12/12/2019.
  */
+
 public class Load implements RequestHandler<Request, HashMap<String, Object>> {
-    private static int initialLength = 0;
-    private static int columnsToAdd = 5;
-    private static SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy");
     private static String tableName = "sales";
+    private static SimpleDateFormat sdfInput = new SimpleDateFormat("MM/dd/yyyy");
+    private static SimpleDateFormat sdfOutput = new SimpleDateFormat("yyyy-MM-dd");
 
     public HashMap<String, Object> handleRequest(Request request, Context context) {
         LambdaLogger logger = context.getLogger();
@@ -41,8 +36,10 @@ public class Load implements RequestHandler<Request, HashMap<String, Object>> {
         inspector.addTimeStamp("frameworkRuntime");
         String bucketname = request.getBucketname();
         String filename = request.getFilename();
-
         Connection con = getConnection();
+        if (con == null){
+            logger.log("Could not establish connection with the database");
+        }
 
         logger.log("Processing file:" + filename + " inside " + bucketname);
 
@@ -51,72 +48,94 @@ public class Load implements RequestHandler<Request, HashMap<String, Object>> {
                 bucketname, filename));    //get object file using source bucket and srcKey name
         InputStream objectData = s3Object.getObjectContent();
         Scanner scanner = new Scanner(objectData);
+        Response response = new Response();
 
         //scanning data line by line
-        scanner.hasNext();
-        String line = scanner.nextLine();
         int count = 0;
-        while (scanner.hasNext()) {
-            line = scanner.nextLine();
-            String[] input = line.split(cvsSplitBy);
-            PreparedStatement ps = null;
-            try {
+
+        try {
+            PreparedStatement ps = con.prepareStatement("delete from sales;");
+            logger.log("Previous entries have been deleted successfully.");
+            ps.execute();
+
+            scanner.hasNext();
+            scanner.nextLine();
+            String line = "";
+            while (scanner.hasNext()) {
+                line = scanner.nextLine();
+                String[] input = line.split(cvsSplitBy);
                 ps = con.prepareStatement(getStatement(input));
                 ps.execute();
-            } catch (SQLException e) {
-                e.printStackTrace();
+                count++;
             }
-
+            scanner.close();
+            con.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
-        scanner.close();
+
+        // Creating dummy file to trigger Query
+        String outputFilename = "dummy.csv";
+        StringWriter sw = new StringWriter();
+        sw.append("random");
+        byte[] bytes = sw.toString().getBytes(StandardCharsets.UTF_8);
+        InputStream is = new ByteArrayInputStream(bytes);
         ObjectMetadata meta = new ObjectMetadata();
+        meta.setContentLength(bytes.length);
         meta.setContentType("text/plain");
 
-
-        //Create and populate a separate response object for function output. (OPTIONAL)
-        Response response = new Response();
-//        response.setValue("Bucket: " + bucketname + " filename:" + filename + " with " + orderIdCollection.size() + " rows processed.");
-        inspector.consumeResponse(response);
+        s3Client.putObject(bucketname, outputFilename, is, meta);
+        logger.log("File " + outputFilename + " Successfully created.");
 
         //****************END FUNCTION IMPLEMENTATION***************************
         double end = System.currentTimeMillis();
-        logger.log("TIme taken at server side to process " + count + " rows is " + (end-start) + "ms");
-
-        //Collect final information such as total runtime and cpu deltas.
+        double timeTaken = (end - start);
+        logger.log("TIme taken at server side to process " + count + " rows is " + timeTaken + "ms");
+        response.setValue("TIme taken at server side to process " + count + " rows is " + timeTaken + "ms");
+        inspector.consumeResponse(response);
         inspector.inspectAllDeltas();
         return inspector.finish();
     }
 
-    private String getStatement(String[] input) {
+    static String getStatement(String[] input) {
         String toReturn = "Insert into " + tableName + " (Region, Country, Item_Type, Sales_Channel, Order_Priority, Order_Date, Order_ID, Ship_Date, Units_Sold, Unit_Price, Unit_Cost, Total_Revenue, Total_Cost, Total_Profit, Order_Date_Unix_Timestamp, Ship_Date_Unix_Timestamp, Order_Processing_Time_Days, Gross_Margin, Profit_Unit) values (";
-        toReturn+= getString(input[0])  + ", " ;
-        toReturn+= input[1] + ", " ;
-        toReturn+= input[2] + ", " ;
-        toReturn+= input[3] + ", " ;
-        toReturn+= input[4] + ", " ;
-        toReturn+= input[5] + ", " ;
-        toReturn+= input[6] + ", " ;
-        toReturn+= input[7] + ", " ;
-        toReturn+= input[8] + ", " ;
-        toReturn+= input[9] + ", " ;
-        toReturn+= input[10] + ", " ;
-        toReturn+= input[11] + ", " ;
-        toReturn+= input[12] + ", " ;
-        toReturn+= input[13] + ", " ;
-        toReturn+= input[14] + ", " ;
-        toReturn+= input[15] + ", " ;
-        toReturn+= input[16] + ", " ;
-        toReturn+= input[17] + ", " ;
-        toReturn+= input[18];
-        toReturn+=");";
+        toReturn += getString(input[0]) + ", ";
+        toReturn += getString(input[1].replaceAll("'", "")) + ", ";
+        toReturn += getString(input[2]) + ", ";
+        toReturn += getString(input[3]) + ", ";
+        toReturn += getString(input[4]) + ", ";
+        toReturn += getDate(input[5]) + ", ";
+        toReturn += getString(input[6]) + ", ";
+        toReturn += getDate(input[7]) + ", ";
+        toReturn += input[8] + ", ";
+        toReturn += input[9] + ", ";
+        toReturn += input[10] + ", ";
+        toReturn += input[11] + ", ";
+        toReturn += input[12] + ", ";
+        toReturn += input[13] + ", ";
+        toReturn += getString(input[14]) + ", ";
+        toReturn += getString(input[15]) + ", ";
+        toReturn += input[16] + ", ";
+        toReturn += input[17] + ", ";
+        toReturn += input[18];
+        toReturn += ");";
         return toReturn;
     }
 
-    private String getString(String s) {
+    private static String getDate(String s) {
+        try {
+            return "'" + sdfOutput.format(sdfInput.parse(s)) + "'";
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private static String getString(String s) {
         return "'" + s + "'";
     }
 
-    private Connection getConnection() {
+    public static Connection getConnection() {
         Properties properties = new Properties();
         try {
             properties.load(new FileInputStream("db.properties"));
@@ -128,7 +147,7 @@ public class Load implements RequestHandler<Request, HashMap<String, Object>> {
             // Manually loading the JDBC Driver is commented out
             // No longer required since JDBC 4
             //Class.forName(driver);
-            return DriverManager.getConnection(url,username,password);
+            return DriverManager.getConnection(url, username, password);
         } catch (IOException e) {
             e.printStackTrace();
         } catch (SQLException e) {
@@ -136,56 +155,4 @@ public class Load implements RequestHandler<Request, HashMap<String, Object>> {
         }
         return null;
     }
-
-    private static String convertToStr(String[] output, String cvsSplitBy) {
-        StringBuilder toReturn = new StringBuilder();
-        for (String anOutput : output) {
-            toReturn.append(anOutput).append(cvsSplitBy);
-        }
-        toReturn.append("\n");
-        return toReturn.toString();
-    }
-
-    private static String[] getUpdatedHeaders(String[] headers) {
-        initialLength = headers.length;
-        String[] toReturn = new String[initialLength + columnsToAdd];
-        int i = 0;
-        for (i = 0; i < initialLength; i++) {
-            toReturn[i] = headers[i];
-        }
-        toReturn[i++] = "Order Date Unix Timestamp";
-        toReturn[i++] = "Ship Date Unix Timestamp";
-        toReturn[i++] = "Order Processing Time (Days)";
-        toReturn[i++] = "Gross Margin";
-        toReturn[i] = "Profit/Unit";
-        return toReturn;
-    }
-
-    private static String[] performTransformation(String[] input) {
-        String[] toReturn = new String[initialLength + columnsToAdd];
-        int i = 0;
-        for (i = 0; i < initialLength; i++) {
-            if (i != 4)
-                toReturn[i] = input[i];
-            else
-                toReturn[i] = input[i].equals("L") ? "Low" : input[i].equals("M") ? "Medium" : input[i].equals("H") ? "High" : "Critical";
-        }
-        try {
-            int orderUnixTime = (int) (sdf.parse(toReturn[5]).getTime() / 1000);
-            int shipUnixTime = (int) (sdf.parse(toReturn[7]).getTime() / 1000);
-            toReturn[i++] = String.valueOf(orderUnixTime);
-            toReturn[i++] = String.valueOf(shipUnixTime);
-            toReturn[i++] = String.valueOf((int) ((double) shipUnixTime - (double) orderUnixTime) / 24 / 3600);
-            toReturn[i++] = String.valueOf(((double) Math.round(10000 * Double.parseDouble(toReturn[13]) / Double.parseDouble(toReturn[11]))) / 10000);
-            toReturn[i] = String.valueOf((double) Math.round(100 * (Double.parseDouble(toReturn[9]) - Double.parseDouble(toReturn[10]))) / 100);
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
-        return toReturn;
-    }
-
-//    public static void main(String[] args) {
-//        String[] output = {"sad", "bad", "mad"};
-//        convertToStr(output, ",");
-//    }
 }
