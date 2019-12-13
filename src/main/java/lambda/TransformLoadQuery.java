@@ -11,6 +11,7 @@ import java.text.SimpleDateFormat;
 import java.util.HashMap;
 
 import static lambda.Load.getConnection;
+import static lambda.Query.performQueries;
 import static lambda.TransformLoad.performTransformLoad;
 
 
@@ -36,7 +37,7 @@ public class TransformLoadQuery implements RequestHandler<Request, HashMap<Strin
             logger.log("Could not establish connection with the database");
         }
         Response response = performTransformLoad(request, context, con, logger);
-        Query.performQueries(con, logger);
+        performQueries(con, logger);
 
         double end = System.currentTimeMillis();
         logger.log("TIme taken at server side to process complete TLQ is " + (end - start) + "ms");

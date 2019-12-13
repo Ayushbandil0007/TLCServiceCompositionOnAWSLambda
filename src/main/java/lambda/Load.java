@@ -37,7 +37,7 @@ public class Load implements RequestHandler<Request, HashMap<String, Object>> {
         String bucketname = request.getBucketname();
         String filename = request.getFilename();
         Connection con = getConnection();
-        if (con == null){
+        if (con == null) {
             logger.log("Could not establish connection with the database");
         }
 
@@ -57,43 +57,19 @@ public class Load implements RequestHandler<Request, HashMap<String, Object>> {
             PreparedStatement ps = con.prepareStatement("delete from sales;");
             logger.log("Previous entries have been deleted successfully.");
             ps.execute();
-
-            ps = con.prepareStatement("drop table sales;");
-            ps.execute();
-
-            ps = con.prepareStatement(
-            "CREATE TABLE sales (\n" +
-                    "Region VARCHAR(40), \n" +
-                    "Country VARCHAR(40), \n" +
-                    "Item_Type VARCHAR(40), \n" +
-                    "Sales_Channel VARCHAR(40), \n" +
-                    "Order_Priority VARCHAR(40), \n" +
-                    "Order_Date DATE, \n" +
-                    "Order_ID VARCHAR(40),\n" +
-                    "Ship_Date DATE, \n" +
-                    "Units_Sold NUMERIC, \n" +
-                    "Unit_Price FLOAT(14,4), \n" +
-                    "Unit_Cost FLOAT(14,4), \n" +
-                    "Total_Revenue FLOAT(14,4), \n" +
-                    "Total_Cost FLOAT(14,4), \n" +
-                    "Total_Profit FLOAT(14,4), \n" +
-                    "Order_Date_Unix_Timestamp VARCHAR(40), \n" +
-                    "Ship_Date_Unix_Timestamp VARCHAR(40), \n" +
-                    "Order_Processing_Time_Days NUMERIC, \n" +
-                    "Gross_Margin FLOAT(10,4), \n" +
-                    "Profit_Unit FLOAT(10,4));");
-            ps.execute();
-
             scanner.hasNext();
             scanner.nextLine();
             String line = "";
-            Statement statement = null;
+            Statement statement = con.createStatement();
             while (scanner.hasNext()) {
                 line = scanner.nextLine();
                 String[] input = line.split(cvsSplitBy);
                 statement.addBatch(getStatement(input));
-                if(count%1000 ==0) statement.executeBatch();
                 count++;
+                if (count % 5000 == 0) {
+                    statement.executeBatch();
+                    logger.log("Processed " + (count / 5000) + "th batch.");
+                }
             }
             statement.executeBatch();
             scanner.close();
@@ -103,7 +79,7 @@ public class Load implements RequestHandler<Request, HashMap<String, Object>> {
         }
 
         // Creating dummy file to trigger Query
-        String outputFilename = "dummy.csv";
+//        String outputFilename = "dummy.csv";
         StringWriter sw = new StringWriter();
         sw.append("random");
         byte[] bytes = sw.toString().getBytes(StandardCharsets.UTF_8);
@@ -112,8 +88,8 @@ public class Load implements RequestHandler<Request, HashMap<String, Object>> {
         meta.setContentLength(bytes.length);
         meta.setContentType("text/plain");
 
-        s3Client.putObject(bucketname, outputFilename, is, meta);
-        logger.log("File " + outputFilename + " Successfully created.");
+//        s3Client.putObject(bucketname, outputFilename, is, meta);
+//        logger.log("File " + outputFilename + " Successfully created.");
 
         //****************END FUNCTION IMPLEMENTATION***************************
         double end = System.currentTimeMillis();

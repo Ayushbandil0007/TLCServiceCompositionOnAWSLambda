@@ -13,10 +13,7 @@ import saaf.Response;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Collection;
@@ -28,6 +25,7 @@ import java.io.InputStream;
 import java.io.StringWriter;
 
 import static lambda.Load.getConnection;
+import static lambda.Load.getStatement;
 import static lambda.Transform.convertToStr;
 import static lambda.Transform.performTransformation;
 
@@ -62,19 +60,19 @@ public class TransformLoad implements RequestHandler<Request, HashMap<String, Ob
         //Collect final information such as total runtime and cpu deltas.
 
         // Creating dummy file to trigger Query
-        String outputFilename = "dummy.csv";
-        StringWriter sw = new StringWriter();
-        sw.append("random");
-        byte[] bytes = sw.toString().getBytes(StandardCharsets.UTF_8);
-        InputStream is = new ByteArrayInputStream(bytes);
-        ObjectMetadata meta = new ObjectMetadata();
-        meta.setContentLength(bytes.length);
-        meta.setContentType("text/plain");
-        String bucketname = request.getBucketname();
+//        String outputFilename = "dummy.csv";
+//        StringWriter sw = new StringWriter();
+//        sw.append("random");
+//        byte[] bytes = sw.toString().getBytes(StandardCharsets.UTF_8);
+//        InputStream is = new ByteArrayInputStream(bytes);
+//        ObjectMetadata meta = new ObjectMetadata();
+//        meta.setContentLength(bytes.length);
+//        meta.setContentType("text/plain");
+//        String bucketname = request.getBucketname();
 
-        AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
-        s3Client.putObject(bucketname, outputFilename, is, meta);
-        logger.log("File " + outputFilename + " Successfully created.");
+//        AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
+//        s3Client.putObject(bucketname, outputFilename, is, meta);
+//        logger.log("File " + outputFilename + " Successfully created.");
 
         inspector.consumeResponse(response);
         inspector.inspectAllDeltas();
@@ -86,10 +84,6 @@ public class TransformLoad implements RequestHandler<Request, HashMap<String, Ob
         String filename = request.getFilename();
         Response response = new Response();
         String outputFilename = filename.replace(".csv", "") + "_output.csv";
-        if (con == null) {
-            logger.log("Could not establish connection with the database");
-        }
-
         logger.log("Processing file:" + filename + " inside " + bucketname + " inside TransformLoad");
 
         AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
@@ -119,20 +113,25 @@ public class TransformLoad implements RequestHandler<Request, HashMap<String, Ob
         count = 0;
 
         try {
+            Statement statement = con.createStatement();
             while (scanner.hasNext()) {
                 line = scanner.nextLine();
                 String[] input = line.split(cvsSplitBy);
                 if (!orderIdCollection.contains(input[6])) {
-                    count++;
                     String[] output = performTransformation(input);
                     sw.append(convertToStr(output, cvsSplitBy));
-                    ps = con.prepareStatement(Load.getStatement(output));
-                    ps.execute();
+                    statement.addBatch(getStatement(output));
+                    count++;
+                    if (count % 5000 == 0) {
+                        statement.executeBatch();
+                        logger.log("Processed " + (count / 5000) + "th batch.");
+                    }
                     orderIdCollection.add(input[6]);
                 } else {
 //                logger.log("Order Id " + input[6] + " is already present.");
                 }
             }
+            statement.executeBatch();
             scanner.close();
             con.close();
         } catch (SQLException e) {

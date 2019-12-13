@@ -60,12 +60,14 @@ public class Query implements RequestHandler<Request, HashMap<String, Object>> {
 
     static void performQueries(Connection con, LambdaLogger logger) {
         try {
+            if (con == null) {
+                con = getConnection();
+            }
             PreparedStatement ps = con.prepareStatement("select version() as version;");
             ResultSet rs = ps.executeQuery();
             ps = con.prepareStatement("Select AVG (Order_Processing_Time_Days) as Avgtime from sales where Region = 'Sub-Saharan Africa' and Sales_channel = 'Offline' and Order_Priority ='Low';");
             rs = ps.executeQuery();
-            while (rs.next())
-            {
+            while (rs.next()) {
                 logger.log("Average Processing time for Region: Sub-Saharan Africa, Sales_channel = 'Offline',Order_Priority ='Low' is " + rs.getString("Avgtime"));
             }
 
@@ -73,16 +75,14 @@ public class Query implements RequestHandler<Request, HashMap<String, Object>> {
             //Average [Gross Margin] in percent
             ps = con.prepareStatement("select AVG (Gross_Margin) as Avgmargin from sales where Region = 'Sub-Saharan Africa' and Sales_channel = 'Offline' and Order_Priority ='Low';");
             rs = ps.executeQuery();
-            while (rs.next())
-            {
+            while (rs.next()) {
                 logger.log("Average Gross Margin for Region: Sub-Saharan Africa, Sales_channel = 'Offline',Order_Priority ='Low' is " + rs.getString("Avgmargin"));
             }
 
             //Average [Units Sold]
             ps = con.prepareStatement("select AVG (Units_Sold) as Avgsold from sales where Region = 'Sub-Saharan Africa' and Sales_channel = 'Offline' and Order_Priority ='Low';");
             rs = ps.executeQuery();
-            while (rs.next())
-            {
+            while (rs.next()) {
                 logger.log("Average Unit Sold for Region: Sub-Saharan Africa, Sales_channel = 'Offline',Order_Priority ='Low' is " + rs.getString("Avgsold"));
             }
 
@@ -90,16 +90,14 @@ public class Query implements RequestHandler<Request, HashMap<String, Object>> {
             ps = con.prepareStatement("select MAX(Units_Sold) as Maxsold from sales where Region = 'Sub-Saharan Africa' and Sales_channel = 'Offline' and Order_Priority ='Low';");
             rs = ps.executeQuery();
 
-            while (rs.next())
-            {
+            while (rs.next()) {
                 logger.log(" Max Unit Sold for Region: Region: Sub-Saharan Africa, Sales_channel = 'Offline',Order_Priority ='Low' is " + rs.getString("Maxsold"));
             }
             //Min [Units Sold]
             ps = con.prepareStatement("select MIN(Units_Sold) as Minsold from sales where Region = 'Sub-Saharan Africa' and Sales_channel = 'Offline' and Order_Priority ='Low';");
             rs = ps.executeQuery();
 
-            while (rs.next())
-            {
+            while (rs.next()) {
                 logger.log("Min Unit Sold for Region: Sub-Saharan Africa, Sales_channel = 'Offline',Order_Priority ='Low' is " + rs.getString("Minsold"));
             }
 
@@ -107,31 +105,28 @@ public class Query implements RequestHandler<Request, HashMap<String, Object>> {
             //Total [Units Sold]
             ps = con.prepareStatement("select SUM(Units_Sold) as Totalsold from sales where Region = 'Sub-Saharan Africa' and Sales_channel = 'Offline' and Order_Priority ='Low';");
             rs = ps.executeQuery();
-            while (rs.next())
-            {
+            while (rs.next()) {
                 logger.log("Sum Unit Sold for Region: Sub-Saharan Africa, Sales_channel = 'Offline',Order_Priority ='Low' is " + rs.getString("Totalsold"));
             }
 
             //Total [Units Revenue]
             ps = con.prepareStatement("select SUM(Total_revenue) as Totalrev from sales where Region = 'Sub-Saharan Africa' and Sales_channel = 'Offline' and Order_Priority ='Low';");
-            rs = ps.executeQuery(); while (rs.next())
-            {
+            rs = ps.executeQuery();
+            while (rs.next()) {
                 logger.log("Total Revenue for Region: Sub-Saharan Africa, Sales_channel = 'Offline',Order_Priority ='Low' is " + rs.getString("Totalrev"));
             }
 
             //Total [Units Profit]
             ps = con.prepareStatement("select SUM(Total_Profit) as Totalprofit from sales where Region = 'Sub-Saharan Africa' and Sales_channel = 'Offline' and Order_Priority ='Low';");
             rs = ps.executeQuery();
-            while (rs.next())
-            {
+            while (rs.next()) {
                 logger.log("Total Profit for Region: Sub-Saharan Africa, Sales_channel = 'Offline',Order_Priority ='Low' is " + rs.getString("Totalprofit"));
             }
 
             //Number of Orders
             ps = con.prepareStatement("Select Count(ORDER_ID) as Numord from sales where Region = 'Sub-Saharan Africa' and Sales_channel = 'Offline' and Order_Priority ='Low';");
             rs = ps.executeQuery();
-            while (rs.next())
-            {
+            while (rs.next()) {
                 logger.log("Total order time for Region: Sub-Saharan Africa, Sales_channel = 'Offline',Order_Priority ='Low' is " + rs.getString("Numord"));
             }
             rs.close();

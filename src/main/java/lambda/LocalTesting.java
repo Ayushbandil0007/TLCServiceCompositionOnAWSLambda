@@ -7,6 +7,8 @@
 //import java.text.SimpleDateFormat;
 //import java.util.*;
 //
+//import static lambda.Load.getStatement;
+//
 ///**
 // * Created by Ayush Bandil on 16/11/2019.
 // */
@@ -36,10 +38,11 @@
 //            outputList.add(updatedDHeaders);
 //            while ((line = br.readLine()) != null) {
 //                String[] input = line.split(cvsSplitBy);
-//                String statement = getStatement(input);
 //                if (!orderIdCollection.contains(input[6])) {
 //                    String[] output = performTransformation(input);
 //                    outputList.add(output);
+//                    String statement = getStatement(input);
+//
 //                    orderIdCollection.add(input[6]);
 //                }
 //            }
@@ -87,43 +90,4 @@
 //        }
 //        return toReturn;
 //    }
-//
-//    private static String getStatement(String[] input) {
-//        String toReturn = "Insert into " + tableName + " (Region, Country, Item_Type, Sales_Channel, Order_Priority, Order_Date, Order_ID, Ship_Date, Units_Sold, Unit_Price, Unit_Cost, Total_Revenue, Total_Cost, Total_Profit, Order_Date_Unix_Timestamp, Ship_Date_Unix_Timestamp, Order_Processing_Time_Days, Gross_Margin, Profit_Unit) values (";
-//        toReturn += getString(input[0]) + ", ";
-//        toReturn += getString(input[1]) + ", ";
-//        toReturn += getString(input[2]) + ", ";
-//        toReturn += getString(input[3]) + ", ";
-//        toReturn += getString(input[4]) + ", ";
-//        toReturn += getDate(input[5]) + ", ";
-//        toReturn += getString(input[6]) + ", ";
-//        toReturn += getDate(input[7]) + ", ";
-//        toReturn += input[8] + ", ";
-//        toReturn += input[9] + ", ";
-//        toReturn += input[10] + ", ";
-//        toReturn += input[11] + ", ";
-//        toReturn += input[12] + ", ";
-//        toReturn += input[13] + ", ";
-//        toReturn += getString(input[14]) + ", ";
-//        toReturn += getString(input[15]) + ", ";
-//        toReturn += input[16] + ", ";
-//        toReturn += input[17] + ", ";
-//        toReturn += input[18];
-//        toReturn += ");";
-//        return toReturn;
-//    }
-//
-//    private static String getDate(String s) {
-//        try {
-//            return "'" + sdfOutput.format(sdfInput.parse(s)) + "'";
-//        } catch (ParseException e) {
-//            e.printStackTrace();
-//        }
-//        return null;
-//    }
-//
-//    private static String getString(String s) {
-//        return "'" + s + "'";
-//    }
-//
 //}

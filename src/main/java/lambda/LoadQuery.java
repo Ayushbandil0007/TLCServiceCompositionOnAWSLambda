@@ -15,6 +15,7 @@ import saaf.Inspector;
 import saaf.Response;
 
 import static lambda.Load.getConnection;
+import static lambda.Load.getStatement;
 import static lambda.Query.performQueries;
 
 
@@ -68,18 +69,23 @@ public class LoadQuery implements RequestHandler<Request, HashMap<String, Object
             PreparedStatement ps = con.prepareStatement("delete from sales;");
             logger.log("Previous entries have been deleted successfully.");
             ps.execute();
-
             scanner.hasNext();
             scanner.nextLine();
             String line = "";
+            Statement statement = con.createStatement();
             while (scanner.hasNext()) {
                 line = scanner.nextLine();
                 String[] input = line.split(cvsSplitBy);
-                ps = con.prepareStatement(Load.getStatement(input));
-                ps.execute();
+                statement.addBatch(getStatement(input));
                 count++;
+                if (count % 5000 == 0) {
+                    statement.executeBatch();
+                    logger.log("Processed " + (count / 5000) + "th batch.");
+                }
             }
+            statement.executeBatch();
             scanner.close();
+            con.close();
         } catch (SQLException e) {
             e.printStackTrace();
         }
