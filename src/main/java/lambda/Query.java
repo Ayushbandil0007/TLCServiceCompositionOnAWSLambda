@@ -60,9 +60,7 @@ public class Query implements RequestHandler<Request, HashMap<String, Object>> {
 
     static void performQueries(Connection con, LambdaLogger logger) {
         try {
-            if (con == null) {
-                con = getConnection();
-            }
+            con = getConnection();
             PreparedStatement ps = con.prepareStatement("select version() as version;");
             ResultSet rs = ps.executeQuery();
             ps = con.prepareStatement("Select AVG (Order_Processing_Time_Days) as Avgtime from sales where Region = 'Sub-Saharan Africa' and Sales_channel = 'Offline' and Order_Priority ='Low';");
